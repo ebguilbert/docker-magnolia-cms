@@ -1,0 +1,105 @@
+version: '3.7'
+
+services: 
+  mgnlauthor-postgres:
+    image: postgres:12
+    restart: unless-stopped
+    healthcheck: 
+      test: pg_isready -U magnolia || exit 1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - "/Users/ebguilbert/docker/pgdata-author:/var/lib/postgresql/data"
+    networks: 
+      - mgnlnet
+    environment:
+      POSTGRES_USER: "magnolia"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set!}
+      POSTGRES_DB: "magnolia"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+  mgnlpublic-postgres:
+    image: postgres:12
+    restart: unless-stopped
+    healthcheck: 
+        test: pg_isready -U magnolia || exit 1
+        interval: 10s
+        timeout: 5s
+        retries: 5
+    volumes:
+      - "/Users/ebguilbert/docker/pgdata-public:/var/lib/postgresql/data"
+    networks: 
+      - mgnlnet
+    environment:
+      POSTGRES_USER: "magnolia"
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set!}
+      POSTGRES_DB: "magnolia"
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+  mgnlauthor:
+    build:
+      context: ./
+      args: 
+        MGNL_AUTHOR: "true"
+    image: ebguilbert/magnolia-cms-postgres:6.2.1-author
+    restart: unless-stopped
+    depends_on:
+      - mgnlauthor-postgres
+    volumes:
+      - mgnl:/opt/magnolia
+    networks: 
+      - mgnlnet
+    ports: 
+      - 8080:8080
+    environment: 
+      DB_ADDRESS: "mgnlauthor-postgres"    
+      DB_PORT: "5432"
+      DB_SCHEMA: "magnolia"
+      DB_USERNAME: "magnolia"
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set!}   
+    healthcheck:
+      test: curl -f http://localhost:8080/.rest/status || exit 1
+      interval: 1m
+      timeout: 10s
+      retries: 5      
+  mgnlpublic:
+    build:
+        context: ./
+        args: 
+          MGNL_AUTHOR: "false"    
+    image: ebguilbert/magnolia-cms-postgres:6.2.1-public
+    restart: unless-stopped
+    depends_on:
+      - mgnlpublic-postgres
+    volumes:
+      - mgnlp1:/opt/magnolia
+    networks: 
+      - mgnlnet
+    ports: 
+      - 8090:8080
+    environment: 
+      DB_ADDRESS: "mgnlpublic-postgres"    
+      DB_PORT: "5432"
+      DB_SCHEMA: "magnolia"
+      DB_USERNAME: "magnolia"
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set!}   
+    healthcheck:
+      test: curl -f http://localhost:8080/.rest/status || exit 1
+      interval: 1m
+      timeout: 10s
+      retries: 5
+
+networks: 
+  mgnlnet:
+    name: mgnlnet
+
+volumes: 
+  mgnl:
+    name: mgnl
+  mgnlp1:
+    name: mgnlp1      
+
+
+
+
+
+
